@@ -238,7 +238,7 @@ app.delete('/api/posts/:id', requireAuth, async (req, res) => {
 
 // Start server
 app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+    console.log(`Server running on port http://localhost:${PORT}`);
     console.log('Sample users:');
     console.log('- reader@example.com / password123');
     console.log('- author@example.com / password123');
