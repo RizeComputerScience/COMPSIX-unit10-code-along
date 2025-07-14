@@ -4,11 +4,12 @@ require('dotenv').config();
 // Initialize database connection
 const db = new Sequelize({
     dialect: process.env.DB_TYPE,
-    storage: process.env.DB_NAME,
+    storage: `database/${process.env.DB_NAME}`,
     logging: false
 });
 
 // User Model
+// In database/setup.js - Update User model
 const User = db.define('User', {
     id: {
         type: DataTypes.INTEGER,
@@ -28,6 +29,15 @@ const User = db.define('User', {
     password: {
         type: DataTypes.STRING,
         allowNull: false
+    },
+    // Add user role
+    role: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        defaultValue: 'reader',
+        validate: {
+            isIn: [['reader', 'author', 'editor']]
+        }
     }
 });
 

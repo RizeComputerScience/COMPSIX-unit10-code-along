@@ -21,17 +21,20 @@ async function initializeDatabase() {
                 {
                     username: 'reader',
                     email: 'reader@example.com',
-                    password: hashedPassword
+                    password: hashedPassword,
+                    role: 'reader'
                 },
                 {
                     username: 'author',
                     email: 'author@example.com',
-                    password: hashedPassword
+                    password: hashedPassword,
+                    role: 'author'
                 },
                 {
                     username: 'editor',
                     email: 'editor@example.com',
-                    password: hashedPassword
+                    password: hashedPassword,
+                    role: 'editor'
                 }
             ]);
             

@@ -3,6 +3,8 @@ const session = require('express-session');
 const bcrypt = require('bcryptjs');
 const { db, User, Post } = require('./database/setup');
 require('dotenv').config();
+const jwt = require('jsonwebtoken');
+
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -23,15 +25,68 @@ app.use(session({
 
 // Session-based authentication middleware (TODO: Replace with JWT)
 function requireAuth(req, res, next) {
-    if (req.session && req.session.userId) {
+    // Extract token from Authorization header
+    const authHeader = req.headers.authorization;
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ error: 'No token provided' });
+    }
+    
+    // Get the token (remove 'Bearer ' prefix)
+    const token = authHeader.substring(7);
+    
+    try {
+        // Verify and decode the token
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        
+        // User info is now available from the token
         req.user = {
-            id: req.session.userId,
-            username: req.session.username,
-            email: req.session.email
+            id: decoded.id,
+            username: decoded.username,
+            email: decoded.email
         };
+        
+        next();
+    } catch (error) {
+        if (error.name === 'TokenExpiredError') {
+            return res.status(401).json({ error: 'Token expired' });
+        } else if (error.name === 'JsonWebTokenError') {
+            return res.status(401).json({ error: 'Invalid token' });
+        } else {
+            return res.status(401).json({ error: 'Token verification failed' });
+        }
+    }
+}
+// Role-based middleware functions
+function requireAuthor(req, res, next) {
+    // Check if user is authenticated first
+    if (!req.user) {
+        return res.status(401).json({ error: 'Authentication required' });
+    }
+    
+    // Check if user has author or editor role
+    if (req.user.role === 'author' || req.user.role === 'editor') {
         next();
     } else {
-        res.status(401).json({ error: 'Please log in' });
+        return res.status(403).json({ 
+            error: 'Access denied. Author role required.' 
+        });
+    }
+}
+
+function requireEditor(req, res, next) {
+    // Check if user is authenticated first
+    if (!req.user) {
+        return res.status(401).json({ error: 'Authentication required' });
+    }
+    
+    // Check if user has editor role
+    if (req.user.role === 'editor') {
+        next();
+    } else {
+        return res.status(403).json({ 
+            error: 'Access denied. Editor role required.' 
+        });
     }
 }
 
@@ -100,19 +155,29 @@ app.post('/api/login', async (req, res) => {
             return res.status(401).json({ error: 'Invalid email or password' });
         }
         
-        // Create session (TODO: Replace with JWT)
-        req.session.userId = user.id;
-        req.session.username = user.username;
-        req.session.email = user.email;
-        
-        res.json({
-            message: 'Login successful',
-            user: {
-                id: user.id,
-                username: user.username,
-                email: user.email
-            }
+        // Create JWT token containing user data
+        const token = jwt.sign( 
+            { 
+                id: user.id, 
+                username: user.username, 
+                email: user.email, 
+                role: user.role 
+            }, 
+            process.env.JWT_SECRET, 
+            { expiresIn: process.env.JWT_EXPIRES_IN } 
+        ); 
+
+        res.json({ 
+            message: 'Login successful', 
+            token: token, 
+            user: { 
+                id: user.id, 
+                username: user.username, 
+                email: user.email, 
+                role: user.role 
+            } 
         });
+
         
     } catch (error) {
         console.error('Error logging in user:', error);
@@ -174,7 +239,7 @@ app.get('/api/posts', async (req, res) => {
 });
 
 // POST /api/posts - Create new post
-app.post('/api/posts', requireAuth, async (req, res) => {
+app.post('/api/posts', requireAuth, requireAuthor, async (req, res) => {
     try {
         const { title, content, published = false } = req.body;
         
@@ -193,7 +258,7 @@ app.post('/api/posts', requireAuth, async (req, res) => {
 });
 
 // PUT /api/posts/:id - Update post
-app.put('/api/posts/:id', requireAuth, async (req, res) => {
+app.put('/api/posts/:id', requireAuth, requireAuthor, async (req, res) => {
     try {
         const { title, content, published } = req.body;
         
@@ -234,6 +299,20 @@ app.delete('/api/posts/:id', requireAuth, async (req, res) => {
         console.error('Error deleting post:', error);
         res.status(500).json({ error: 'Failed to delete post' });
     }
+});
+
+// GET /api/users - Get all users (Editor only)
+app.get('/api/users', requireAuth, requireEditor, async (req, res) => {
+   try {
+       const users = await User.findAll({
+           attributes: ['id', 'username', 'email', 'role', 'createdAt']
+       });
+       
+       res.json(users);
+   } catch (error) {
+       console.error('Error fetching users:', error);
+       res.status(500).json({ error: 'Failed to fetch users' });
+   }
 });
 
 // Start server
