@@ -1,4 +1,4 @@
-# Blog JWT Authentication Example
+# Unit 10 Code Along: Blog JWT Authentication and Role Based Authorization
 
 A simple blog API demonstrating the conversion from session-based to JWT authentication, followed by implementing role-based access control.
 
