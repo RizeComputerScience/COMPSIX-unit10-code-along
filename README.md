@@ -15,6 +15,8 @@ A simple blog API demonstrating the conversion from session-based to JWT authent
 
 ## API Endpoints
 
+- `GET /api/users` - All users in the database
+
 ### Authentication
 - `POST /api/register` - Register new user
 - `POST /api/login` - User login

@@ -236,6 +236,20 @@ app.delete('/api/posts/:id', requireAuth, async (req, res) => {
     }
 });
 
+// GET /api/users - Get all users (Editor only)
+app.get('/api/users', requireAuth, requireEditor, async (req, res) => {
+   try {
+       const users = await User.findAll({
+           attributes: ['id', 'username', 'email', 'role', 'createdAt']
+       });
+       
+       res.json(users);
+   } catch (error) {
+       console.error('Error fetching users:', error);
+       res.status(500).json({ error: 'Failed to fetch users' });
+   }
+});
+
 // Start server
 app.listen(PORT, () => {
     console.log(`Server running on port http://localhost:${PORT}`);
